@@ -1,19 +1,26 @@
+# Use an official Jenkins LTS release as a parent image
 FROM jenkins/jenkins:lts
 
-USER root
+# Install the required plugins
+RUN /usr/local/bin/install-plugins.sh git github
 
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip
+# Install Python and pip
+RUN apt-get update && \
+    apt-get install -y python3-pip && \
+    pip3 install --upgrade pip
 
-USER jenkins
+# Copy the Jenkinsfile and Python script to the container
+COPY Jenkinsfile /var/jenkins_home/Jenkinsfile
+COPY main.py /var/jenkins_home/main.py
 
-COPY --chown=jenkins:jenkins ./jenkins/plugins.txt /usr/share/jenkins/plugins.txt
-RUN /usr/local/bin/install-plugins.sh < /usr/share/jenkins/plugins.txt
+# Set up the Jenkins job
+ENV JENKINS_JOBS_FOLDER=/var/jenkins_home/jobs
+RUN mkdir -p $JENKINS_JOBS_FOLDER/Python\ Job && \
+    cp /var/jenkins_home/Jenkinsfile $JENKINS_JOBS_FOLDER/Python\ Job/ && \
+    chown -R jenkins:jenkins $JENKINS_JOBS_FOLDER
 
-COPY --chown=jenkins:jenkins ./jenkins/jenkins.yaml /var/jenkins_home/casc_configs/jenkins.yaml
+# Expose the Jenkins server port
+EXPOSE 8080
 
-ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false -Dhudson.model.DirectoryBrowserSupport.CSP=\"default-src 'self' 'unsafe-inline'; img-src 'self';\""
-
-COPY --chown=jenkins:jenkins Jenkinsfile /var/jenkins_home/Jenkinsfile
-COPY --chown=jenkins:jenkins main.py /var/jenkins_home/main.py
+# Set the entrypoint to start Jenkins
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/jenkins.sh"]
