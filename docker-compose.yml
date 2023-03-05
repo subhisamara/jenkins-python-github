@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  jenkins:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+    networks:
+      - jenkins-net
+
+volumes:
+  jenkins-data:
+
+networks:
+  jenkins-net:
